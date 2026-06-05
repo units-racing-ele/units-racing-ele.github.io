@@ -399,7 +399,12 @@ function renderStats() {
 }
 
 function openAuthDialog() {
-  authDialog.showModal();
+  if (typeof authDialog.showModal === "function") {
+    authDialog.showModal();
+    return;
+  }
+
+  authDialog.setAttribute("open", "");
 }
 
 function openEventDialog() {
@@ -408,13 +413,21 @@ function openEventDialog() {
   eventTitle.value = "";
   eventType.value = "priority";
   eventNotes.value = "";
-  eventDialog.showModal();
+  if (typeof eventDialog.showModal === "function") {
+    eventDialog.showModal();
+    return;
+  }
+
+  eventDialog.setAttribute("open", "");
 }
 
 function closeDialog(dialogElement) {
   if (dialogElement.open) {
     dialogElement.close();
+    return;
   }
+
+  dialogElement.removeAttribute("open");
 }
 
 function normalizeType(type) {

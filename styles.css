@@ -95,11 +95,20 @@ body::before {
   gap: 22px;
   grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.95fr);
   align-items: end;
+  position: relative;
 }
 
 .hero-side {
   display: grid;
   gap: 14px;
+}
+
+.auth-launcher {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  z-index: 6;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
 }
 
 .eyebrow,
@@ -482,6 +491,11 @@ button {
   padding: 0;
   background: transparent;
   color: inherit;
+}
+
+.dialog-shell[open] {
+  display: grid;
+  place-items: center;
 }
 
 .dialog-shell::backdrop {
