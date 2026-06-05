@@ -116,10 +116,7 @@ let currentView = new Date(2026, 5, 1);
 let selectedDateKey = "2026-06-05";
 let currentUser = loadSession();
 let events = loadEvents();
-
 authUsername.innerHTML = accounts
-  .map((account) => `<option value="${account.username}">${account.label} (${account.role})</option>`)
-  .join("");
 
 function cloneDefaultEvents() {
   return defaultEvents.map((event) => ({ ...event }));
@@ -399,6 +396,9 @@ function renderStats() {
 }
 
 function openAuthDialog() {
+  authUsername.value = "";
+  authPassword.value = "";
+
   if (typeof authDialog.showModal === "function") {
     authDialog.showModal();
     return;
@@ -497,7 +497,7 @@ eventCancel.addEventListener("click", () => closeDialog(eventDialog));
 authForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  const account = getAccountByUsername(authUsername.value);
+  const account = getAccountByUsername(authUsername.value.trim());
   if (!account || account.password !== authPassword.value) {
     authHint.textContent = "Credenziali non valide. Controlla account e password demo.";
     return;
