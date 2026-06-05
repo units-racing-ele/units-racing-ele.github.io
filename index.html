@@ -31,19 +31,33 @@
           </p>
         </div>
 
-        <div class="hero-stats">
-          <article>
-            <span>In coda</span>
-            <strong id="stat-queue">8</strong>
-          </article>
-          <article>
-            <span>In stampa</span>
-            <strong id="stat-printing">3</strong>
-          </article>
-          <article>
-            <span>Completate oggi</span>
-            <strong id="stat-done">12</strong>
-          </article>
+        <div class="hero-side">
+          <div class="auth-card">
+            <div>
+              <p class="auth-label">Accesso</p>
+              <strong id="auth-status">Modalità ospite</strong>
+              <p id="auth-hint">Solo gli account autorizzati possono modificare priorità e aggiungere eventi.</p>
+            </div>
+            <div class="auth-actions">
+              <button class="ghost-button" id="login-button" type="button">Accedi</button>
+              <button class="ghost-button ghost-secondary" id="logout-button" type="button" hidden>Esci</button>
+            </div>
+          </div>
+
+          <div class="hero-stats">
+            <article>
+              <span>In coda</span>
+              <strong id="stat-queue">8</strong>
+            </article>
+            <article>
+              <span>In stampa</span>
+              <strong id="stat-printing">3</strong>
+            </article>
+            <article>
+              <span>Completate oggi</span>
+              <strong id="stat-done">12</strong>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -58,6 +72,7 @@
               <button class="ghost-button" id="today-button" type="button">Oggi</button>
               <button class="icon-button" id="prev-button" type="button" aria-label="Mese precedente">‹</button>
               <button class="icon-button" id="next-button" type="button" aria-label="Mese successivo">›</button>
+              <button class="ghost-button action-button" id="new-event-button" type="button" hidden>Nuovo evento</button>
             </div>
           </header>
 
@@ -80,6 +95,7 @@
               <p class="section-label">Dettaglio giorno</p>
               <h3 id="selected-date-label"></h3>
             </div>
+            <p id="permissions-note" class="permissions-note"></p>
             <div id="selected-day-summary" class="day-summary"></div>
           </section>
 
@@ -93,5 +109,79 @@
         </aside>
       </section>
     </main>
+
+    <dialog id="auth-dialog" class="dialog-shell">
+      <form id="auth-form" method="dialog" class="dialog-card">
+        <div class="dialog-header">
+          <div>
+            <p class="section-label">Account</p>
+            <h3>Accedi al sistema</h3>
+          </div>
+          <button class="icon-button" id="close-auth-dialog" type="button" aria-label="Chiudi">×</button>
+        </div>
+
+        <label class="field">
+          <span>Account</span>
+          <select id="auth-username" required></select>
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <input id="auth-password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <p class="dialog-help">Conti demo disponibili: ospite, operatore e responsabile.</p>
+
+        <div class="dialog-actions">
+          <button class="ghost-button" id="auth-cancel" type="button">Annulla</button>
+          <button class="ghost-button action-button" type="submit">Entra</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="event-dialog" class="dialog-shell">
+      <form id="event-form" method="dialog" class="dialog-card dialog-wide">
+        <div class="dialog-header">
+          <div>
+            <p class="section-label">Nuovo evento</p>
+            <h3>Aggiungi richiesta di stampa</h3>
+          </div>
+          <button class="icon-button" id="close-event-dialog" type="button" aria-label="Chiudi">×</button>
+        </div>
+
+        <div class="form-grid">
+          <label class="field">
+            <span>Data</span>
+            <input id="event-date" type="date" required />
+          </label>
+          <label class="field">
+            <span>Ora</span>
+            <input id="event-time" type="time" required />
+          </label>
+          <label class="field field-wide">
+            <span>Titolo</span>
+            <input id="event-title" type="text" maxlength="80" required />
+          </label>
+          <label class="field">
+            <span>Tipo</span>
+            <select id="event-type" required>
+              <option value="priority">Priorità alta</option>
+              <option value="printing">In stampa</option>
+              <option value="setup">Setup</option>
+              <option value="service">Servizio</option>
+            </select>
+          </label>
+          <label class="field field-wide">
+            <span>Note</span>
+            <textarea id="event-notes" rows="4" maxlength="240" required></textarea>
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="ghost-button" id="event-cancel" type="button">Annulla</button>
+          <button class="ghost-button action-button" type="submit">Salva evento</button>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

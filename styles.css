@@ -93,8 +93,13 @@ body::before {
   padding: 28px;
   display: grid;
   gap: 22px;
-  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.95fr);
   align-items: end;
+}
+
+.hero-side {
+  display: grid;
+  gap: 14px;
 }
 
 .eyebrow,
@@ -132,6 +137,41 @@ body::before {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+
+.auth-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-label {
+  margin: 0 0 6px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+}
+
+.auth-card strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1.2rem;
+}
+
+.auth-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .hero-stats article {
@@ -205,6 +245,22 @@ button {
 .ghost-button {
   padding: 11px 16px;
   color: var(--text);
+}
+
+.ghost-secondary {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.action-button {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #0d1320;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 800;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #ffd06b, #ff9960);
 }
 
 .icon-button {
@@ -340,6 +396,12 @@ button {
   gap: 20px;
 }
 
+.permissions-note {
+  margin: -4px 0 16px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .detail-card {
   padding: 22px;
 }
@@ -376,6 +438,110 @@ button {
 .task-meta {
   color: var(--muted);
   font-size: 0.92rem;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(9, 17, 31, 0.88);
+  color: var(--text);
+  font: inherit;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid rgba(247, 184, 75, 0.35);
+  outline-offset: 1px;
+}
+
+.field-inline {
+  margin-top: 14px;
+}
+
+.field-inline select {
+  max-width: 240px;
+}
+
+.dialog-shell {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.dialog-shell::backdrop {
+  background: rgba(3, 8, 16, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.dialog-card {
+  width: min(92vw, 520px);
+  padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 18, 33, 0.96);
+  box-shadow: var(--shadow);
+}
+
+.dialog-wide {
+  width: min(92vw, 760px);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.6rem;
+}
+
+.dialog-help {
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.event-type-select {
+  margin-top: 0;
 }
 
 .task-list {
@@ -459,6 +625,10 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .calendar-toolbar {
     flex-direction: column;
   }
@@ -471,5 +641,10 @@ button {
   .day-cell {
     min-height: 92px;
     padding: 10px;
+  }
+
+  .dialog-card,
+  .dialog-wide {
+    width: min(94vw, 760px);
   }
 }
