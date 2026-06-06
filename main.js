@@ -34,6 +34,11 @@ const statDone = document.getElementById("stat-done");
 
 const STORAGE_KEY = "urt-calendar-events-v1";
 const SESSION_KEY = "urt-calendar-session-v1";
+const SUPABASE_URL = "https://hlpnlwtrjgxxkqnnuqfy.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhscG5sd3Ryamd4eGtxbm51cWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NDA3NzYsImV4cCI6MjA5NjMxNjc3Nn0.erK5_oh75YiZtXSOa6mEgEBghPRQ6r9vQ0zY4fJ8AMs";
+const SUPABASE_TABLE = "events";
+const HAS_SUPABASE_CONFIG =
+  !SUPABASE_URL.includes("YOUR_PROJECT_ID") && !SUPABASE_ANON_KEY.includes("YOUR_SUPABASE_ANON_KEY");
 
 const accounts = [
   { username: "ospite", password: "guest3d", label: "Ospite", role: "viewer", canEdit: false },
@@ -124,15 +129,28 @@ const defaultEvents = [
 let currentView = new Date(2026, 5, 1);
 let selectedDateKey = "2026-06-05";
 let currentUser = loadSession();
-let events = loadEvents();
+let events = [];
 let editingEventId = null;
-authUsername.innerHTML = accounts
 
 function cloneDefaultEvents() {
   return defaultEvents.map((event) => ({ ...event }));
 }
 
-function loadEvents() {
+function ensureEventId(event) {
+  return event.id ?? `${event.date}-${event.time}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeEvents(records) {
+  return records
+    .filter((event) => event && event.date && event.title && event.time && event.type && event.notes)
+    .map((event) => ({
+      ...event,
+      id: ensureEventId(event),
+      priority: normalizePriority(event.priority ?? event.type),
+    }));
+}
+
+function getLocalEvents() {
   try {
     const storedEvents = localStorage.getItem(STORAGE_KEY);
     if (!storedEvents) {
@@ -144,20 +162,103 @@ function loadEvents() {
       return cloneDefaultEvents();
     }
 
-    return parsedEvents
-      .filter((event) => event && event.date && event.title && event.time && event.type && event.notes)
-      .map((event) => ({
-        ...event,
-        id: event.id ?? `${event.date}-${event.time}-${Math.random().toString(36).slice(2, 8)}`,
-        priority: normalizePriority(event.priority ?? event.type),
-      }));
+    return normalizeEvents(parsedEvents);
   } catch {
     return cloneDefaultEvents();
   }
 }
 
-function saveEvents() {
+function getSeedEvents() {
+  return normalizeEvents(defaultEvents).map((event) => ({ ...event }));
+}
+
+async function loadEvents() {
+  if (!HAS_SUPABASE_CONFIG) {
+    return getLocalEvents();
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=*&order=date.asc,time.asc`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    console.warn("Supabase load failed, falling back to localStorage", response.status, response.statusText);
+    authHint.textContent = "Supabase configurato, ma la tabella events non e' ancora pronta. Il sito sta usando il salvataggio locale finche' non crei la tabella events.";
+    return getLocalEvents();
+  }
+
+  const data = await response.json();
+  if (!data || data.length === 0) {
+    const seedEvents = getSeedEvents();
+    const seedResponse = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(seedEvents),
+    });
+
+    if (seedResponse.ok) {
+      return seedEvents;
+    }
+  }
+
+  return normalizeEvents(data ?? []);
+}
+
+function saveLocalEvents() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+}
+
+async function initSupabaseClient() {
+  return HAS_SUPABASE_CONFIG ? true : null;
+}
+
+async function persistEventRecord(event) {
+  if (!HAS_SUPABASE_CONFIG) {
+    saveLocalEvents();
+    return;
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify(event),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase save failed (${response.status})`);
+  }
+}
+
+async function removeEventRecord(eventId) {
+  if (!HAS_SUPABASE_CONFIG) {
+    saveLocalEvents();
+    return;
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(eventId)}`, {
+    method: "DELETE",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase delete failed (${response.status})`);
+  }
 }
 
 function loadSession() {
@@ -246,26 +347,28 @@ function priorityBadgeClass(priority) {
 }
 
 function updateAuthUi() {
+  const syncMode = HAS_SUPABASE_CONFIG ? "Sincronizzazione condivisa attiva" : "Salvataggio locale attivo";
+
   if (currentUser) {
     authStatus.textContent = `${currentUser.label} collegato`;
     authHint.textContent = currentUser.canEdit
-      ? "Hai i permessi per modificare priorità e aggiungere eventi."
-      : "Il tuo account può solo visualizzare il calendario.";
+      ? `Hai i permessi per modificare priorità e aggiungere eventi. ${syncMode}.`
+      : `Il tuo account può solo visualizzare il calendario. ${syncMode}.`;
     logoutButton.hidden = false;
     loginButton.textContent = "Account";
     newEventButton.hidden = !currentUser.canEdit;
     permissionsNote.textContent = currentUser.canEdit
-      ? `Accesso attivo per ${currentUser.label}: puoi aggiungere eventi e aggiornare priorità.`
-      : `Accesso attivo per ${currentUser.label}: modalità sola lettura.`;
+      ? `Accesso attivo per ${currentUser.label}: puoi aggiungere eventi e aggiornare priorità. ${syncMode}.`
+      : `Accesso attivo per ${currentUser.label}: modalità sola lettura. ${syncMode}.`;
     return;
   }
 
   authStatus.textContent = "Modalità ospite";
-  authHint.textContent = "Solo gli account autorizzati possono modificare priorità e aggiungere eventi.";
+  authHint.textContent = `Solo gli account autorizzati possono modificare priorità e aggiungere eventi. ${syncMode}.`;
   logoutButton.hidden = true;
   loginButton.textContent = "Accedi";
   newEventButton.hidden = true;
-  permissionsNote.textContent = "Sei in sola visualizzazione. Accedi con un account autorizzato per modificare la pianificazione.";
+  permissionsNote.textContent = `Sei in sola visualizzazione. Accedi con un account autorizzato per modificare la pianificazione. ${syncMode}.`;
 }
 
 function renderCalendar() {
@@ -383,7 +486,9 @@ function renderSelectedDay() {
       const id = e.currentTarget.dataset.eventId;
       if (!confirm("Confermi eliminazione di questo evento?")) return;
       events = events.filter((it) => it.id !== id);
-      saveEvents();
+      removeEventRecord(id).catch((error) => {
+        eventFormMessage.textContent = `Errore eliminazione: ${error.message ?? error}`;
+      });
       renderCalendar();
       renderSelectedDay();
       renderUpcoming();
@@ -474,7 +579,7 @@ function normalizePriority(priority) {
   return "medium";
 }
 
-function createEvent() {
+async function createEvent() {
   if (!canEdit()) {
     return;
   }
@@ -506,10 +611,9 @@ function createEvent() {
     found.notes = eventNotes.value.trim();
 
     events = [...events].sort((left, right) => left.date.localeCompare(right.date) || left.time.localeCompare(right.time));
-    editingEventId = null;
   } else {
     const nextEvent = {
-      id: `${proposedDate}-${proposedTime}-${Math.random().toString(36).slice(2, 8)}`,
+      id: ensureEventId({ date: proposedDate, time: proposedTime }),
       date: proposedDate,
       time: proposedTime,
       title: eventTitle.value.trim(),
@@ -520,7 +624,17 @@ function createEvent() {
 
     events = [...events, nextEvent].sort((left, right) => left.date.localeCompare(right.date) || left.time.localeCompare(right.time));
   }
-  saveEvents();
+  try {
+    const currentEvent = editingEventId ? events.find((item) => item.id === editingEventId) : events.find((e) => e.date === proposedDate && e.time === proposedTime && e.title === eventTitle.value.trim());
+    if (currentEvent) {
+      await persistEventRecord(currentEvent);
+    }
+  } catch (error) {
+    eventFormMessage.textContent = `Errore salvataggio: ${error.message ?? error}`;
+    return;
+  }
+
+  editingEventId = null;
   const savedEvent = events.find((e) => e.date === proposedDate && e.time === proposedTime && e.title === eventTitle.value.trim());
   if (savedEvent) {
     selectedDateKey = savedEvent.date;
@@ -594,6 +708,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 updateAuthUi();
+events = await loadEvents();
 renderStats();
 renderUpcoming();
 renderCalendar();
