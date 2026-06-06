@@ -27,9 +27,9 @@
 
         <div class="hero-copy">
           <p class="eyebrow">URT · stampa 3D</p>
-          <h1>Gestione stampe con vista calendario.</h1>
+          <h1>Gestione stampe 3D</h1>
           <p class="lead">
-            Una dashboard pensata per il vostro ufficio: richieste, scadenze e stato delle stampe in un colpo d’occhio.
+            Dashboard.
           </p>
         </div>
 
@@ -164,12 +164,11 @@
             <input id="event-title" type="text" maxlength="80" required />
           </label>
           <label class="field">
-            <span>Tipo</span>
-            <select id="event-type" required>
-              <option value="priority">Priorità alta</option>
-              <option value="printing">In stampa</option>
-              <option value="setup">Setup</option>
-              <option value="service">Servizio</option>
+            <span>Priorità</span>
+            <select id="event-priority" required>
+              <option value="high">Alta</option>
+              <option value="medium" selected>Media</option>
+              <option value="low">Bassa</option>
             </select>
           </label>
           <label class="field field-wide">
@@ -177,6 +176,8 @@
             <textarea id="event-notes" rows="4" maxlength="240" required></textarea>
           </label>
         </div>
+
+        <p id="event-form-message" class="dialog-help dialog-message" aria-live="polite"></p>
 
         <div class="dialog-actions">
           <button class="ghost-button" id="event-cancel" type="button">Annulla</button>

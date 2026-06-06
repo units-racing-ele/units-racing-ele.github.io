@@ -22,8 +22,9 @@ const eventCancel = document.getElementById("event-cancel");
 const eventDate = document.getElementById("event-date");
 const eventTime = document.getElementById("event-time");
 const eventTitle = document.getElementById("event-title");
-const eventType = document.getElementById("event-type");
+const eventPriority = document.getElementById("event-priority");
 const eventNotes = document.getElementById("event-notes");
+const eventFormMessage = document.getElementById("event-form-message");
 const selectedDateLabel = document.getElementById("selected-date-label");
 const selectedDaySummary = document.getElementById("selected-day-summary");
 const upcomingList = document.getElementById("upcoming-list");
@@ -58,6 +59,7 @@ const defaultEvents = [
     date: "2026-06-03",
     title: "Supporto ala posteriore",
     type: "priority",
+    priority: "high",
     time: "09:30",
     notes: "Stampa in PLA ad alta rigidità, verifica fori inserto dopo il raffreddamento.",
   },
@@ -65,6 +67,7 @@ const defaultEvents = [
     date: "2026-06-05",
     title: "Dima freno anteriore",
     type: "printing",
+    priority: "high",
     time: "11:00",
     notes: "Monitorare primo layer e temperatura camera.",
   },
@@ -72,6 +75,7 @@ const defaultEvents = [
     date: "2026-06-05",
     title: "Cover sensori",
     type: "setup",
+    priority: "medium",
     time: "15:30",
     notes: "File pronto per slicing e orientamento finale da confermare.",
   },
@@ -79,6 +83,7 @@ const defaultEvents = [
     date: "2026-06-07",
     title: "Spool check e ricarica",
     type: "service",
+    priority: "low",
     time: "18:00",
     notes: "Aggiornare stock materiali e segnare bobine residue.",
   },
@@ -86,6 +91,7 @@ const defaultEvents = [
     date: "2026-06-10",
     title: "Carter elettronica",
     type: "priority",
+    priority: "high",
     time: "10:15",
     notes: "Richiesta del reparto elettrico con priorità alta.",
   },
@@ -93,6 +99,7 @@ const defaultEvents = [
     date: "2026-06-13",
     title: "Inserti mockup cockpit",
     type: "setup",
+    priority: "medium",
     time: "14:00",
     notes: "Controllo tolleranze prima della finitura.",
   },
@@ -100,6 +107,7 @@ const defaultEvents = [
     date: "2026-06-17",
     title: "Supporto sensore ABS",
     type: "printing",
+    priority: "high",
     time: "12:45",
     notes: "Test funzionale dopo il post-processing.",
   },
@@ -107,6 +115,7 @@ const defaultEvents = [
     date: "2026-06-21",
     title: "Riorganizzazione coda",
     type: "service",
+    priority: "low",
     time: "17:30",
     notes: "Pulizia coda e priorità sprint successivo.",
   },
@@ -116,6 +125,7 @@ let currentView = new Date(2026, 5, 1);
 let selectedDateKey = "2026-06-05";
 let currentUser = loadSession();
 let events = loadEvents();
+let editingEventId = null;
 authUsername.innerHTML = accounts
 
 function cloneDefaultEvents() {
@@ -134,7 +144,13 @@ function loadEvents() {
       return cloneDefaultEvents();
     }
 
-    return parsedEvents.filter((event) => event && event.date && event.title && event.time && event.type && event.notes);
+    return parsedEvents
+      .filter((event) => event && event.date && event.title && event.time && event.type && event.notes)
+      .map((event) => ({
+        ...event,
+        id: event.id ?? `${event.date}-${event.time}-${Math.random().toString(36).slice(2, 8)}`,
+        priority: normalizePriority(event.priority ?? event.type),
+      }));
   } catch {
     return cloneDefaultEvents();
   }
@@ -213,10 +229,16 @@ function eventLabel(type) {
   return "Servizio";
 }
 
-function eventBadgeClass(type) {
-  if (type === "service") return "blocked";
-  if (type === "printing") return "active";
-  return "ready";
+function priorityLabel(priority) {
+  if (priority === "high") return "Alta";
+  if (priority === "low") return "Bassa";
+  return "Media";
+}
+
+function priorityBadgeClass(priority) {
+  if (priority === "high") return "high";
+  if (priority === "low") return "low";
+  return "medium";
 }
 
 function updateAuthUi() {
@@ -317,19 +339,15 @@ function renderSelectedDay() {
         <article class="summary-card">
           <p class="summary-title">${event.time} · ${event.title}</p>
           <p class="summary-meta">${eventLabel(event.type)}</p>
+          <p class="summary-meta">Priorità ${priorityLabel(event.priority)}</p>
           <p class="summary-meta">${event.notes}</p>
           ${
             canEdit()
               ? `
-                <label class="field field-inline">
-                  <span>Priorità / stato</span>
-                  <select data-event-date="${event.date}" data-event-time="${event.time}" class="event-type-select">
-                    <option value="priority" ${event.type === "priority" ? "selected" : ""}>Priorità alta</option>
-                    <option value="printing" ${event.type === "printing" ? "selected" : ""}>In stampa</option>
-                    <option value="setup" ${event.type === "setup" ? "selected" : ""}>Setup</option>
-                    <option value="service" ${event.type === "service" ? "selected" : ""}>Servizio</option>
-                  </select>
-                </label>
+                <div class="summary-actions">
+                  <button class="ghost-button small edit-event" data-event-id="${event.id}" type="button">Modifica</button>
+                  <button class="ghost-button small danger delete-event" data-event-id="${event.id}" type="button">Elimina</button>
+                </div>
               `
               : ""
           }
@@ -338,23 +356,29 @@ function renderSelectedDay() {
     )
     .join("");
 
-  selectedDaySummary.querySelectorAll(".event-type-select").forEach((selectElement) => {
-    selectElement.addEventListener("change", (event) => {
-      if (!canEdit()) {
-        return;
-      }
+  // Edit / Delete handlers
+  selectedDaySummary.querySelectorAll(".edit-event").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const id = e.currentTarget.dataset.eventId;
+      const matched = events.find((it) => it.id === id);
+      if (!matched) return;
+      // prefill form and open dialog in edit mode
+      editingEventId = id;
+      eventDate.value = matched.date;
+      eventTime.value = matched.time;
+      eventTitle.value = matched.title;
+      eventPriority.value = matched.priority || "medium";
+      eventNotes.value = matched.notes;
+      eventFormMessage.textContent = "Modifica evento";
+      if (typeof eventDialog.showModal === "function") eventDialog.showModal(); else eventDialog.setAttribute("open", "");
+    });
+  });
 
-      const target = event.currentTarget;
-      const targetDate = target.dataset.eventDate;
-      const targetTime = target.dataset.eventTime;
-      const nextType = target.value;
-      const matchedEvent = events.find((item) => item.date === targetDate && item.time === targetTime);
-
-      if (!matchedEvent) {
-        return;
-      }
-
-      matchedEvent.type = nextType;
+  selectedDaySummary.querySelectorAll(".delete-event").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const id = e.currentTarget.dataset.eventId;
+      if (!confirm("Confermi eliminazione di questo evento?")) return;
+      events = events.filter((it) => it.id !== id);
       saveEvents();
       renderCalendar();
       renderSelectedDay();
@@ -375,7 +399,7 @@ function renderUpcoming() {
         <li>
           <div class="task-topline">
             <span>${event.title}</span>
-            <span class="task-badge ${event.type === "service" ? "blocked" : event.type === "printing" ? "active" : "ready"}">${eventLabel(event.type)}</span>
+            <span class="task-badge ${priorityBadgeClass(event.priority)}">Priorità ${priorityLabel(event.priority)}</span>
           </div>
           <div class="task-meta">${dayFormatter.format(parseDate(event.date))} · ${event.time}</div>
         </li>
@@ -411,8 +435,10 @@ function openEventDialog() {
   eventDate.value = selectedDateKey;
   eventTime.value = "09:00";
   eventTitle.value = "";
-  eventType.value = "priority";
+  eventPriority.value = "medium";
   eventNotes.value = "";
+  editingEventId = null;
+  eventFormMessage.textContent = "";
   if (typeof eventDialog.showModal === "function") {
     eventDialog.showModal();
     return;
@@ -430,31 +456,66 @@ function closeDialog(dialogElement) {
   dialogElement.removeAttribute("open");
 }
 
-function normalizeType(type) {
-  if (type === "priority" || type === "printing" || type === "setup" || type === "service") {
-    return type;
+function normalizePriority(priority) {
+  if (priority === "high" || priority === "medium" || priority === "low") {
+    return priority;
   }
 
-  return "priority";
+  return "medium";
 }
 
 function createEvent() {
   if (!canEdit()) {
     return;
   }
+  const proposedDate = eventDate.value;
+  const proposedTime = eventTime.value;
 
-  const nextEvent = {
-    date: eventDate.value,
-    time: eventTime.value,
-    title: eventTitle.value.trim(),
-    type: normalizeType(eventType.value),
-    notes: eventNotes.value.trim(),
-  };
+  const conflictExists = events.some((event) => {
+    if (editingEventId && event.id === editingEventId) return false;
+    return event.date === proposedDate && event.time === proposedTime;
+  });
+  if (conflictExists) {
+    eventFormMessage.textContent = "Esiste già un evento in questo orario. Scegli un altro slot.";
+    return;
+  }
 
-  events = [...events, nextEvent].sort((left, right) => left.date.localeCompare(right.date) || left.time.localeCompare(right.time));
+  if (editingEventId) {
+    // update existing
+    const found = events.find((e) => e.id === editingEventId);
+    if (!found) {
+      eventFormMessage.textContent = "Evento non trovato per la modifica.";
+      return;
+    }
+
+    found.date = proposedDate;
+    found.time = proposedTime;
+    found.title = eventTitle.value.trim();
+    found.type = "printing";
+    found.priority = normalizePriority(eventPriority.value);
+    found.notes = eventNotes.value.trim();
+
+    events = [...events].sort((left, right) => left.date.localeCompare(right.date) || left.time.localeCompare(right.time));
+    editingEventId = null;
+  } else {
+    const nextEvent = {
+      id: `${proposedDate}-${proposedTime}-${Math.random().toString(36).slice(2, 8)}`,
+      date: proposedDate,
+      time: proposedTime,
+      title: eventTitle.value.trim(),
+      type: "printing",
+      priority: normalizePriority(eventPriority.value),
+      notes: eventNotes.value.trim(),
+    };
+
+    events = [...events, nextEvent].sort((left, right) => left.date.localeCompare(right.date) || left.time.localeCompare(right.time));
+  }
   saveEvents();
-  selectedDateKey = nextEvent.date;
-  currentView = startOfMonth(parseDate(nextEvent.date));
+  const savedEvent = events.find((e) => e.date === proposedDate && e.time === proposedTime && e.title === eventTitle.value.trim());
+  if (savedEvent) {
+    selectedDateKey = savedEvent.date;
+    currentView = startOfMonth(parseDate(savedEvent.date));
+  }
   closeDialog(eventDialog);
   renderCalendar();
   renderSelectedDay();

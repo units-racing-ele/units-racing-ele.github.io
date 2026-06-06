@@ -449,6 +449,10 @@ button {
   font-size: 0.92rem;
 }
 
+.dialog-message {
+  min-height: 1.2em;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -558,6 +562,10 @@ button {
   margin-top: 0;
 }
 
+.event-priority-select {
+  margin-top: 0;
+}
+
 .task-list {
   list-style: none;
   padding: 0;
@@ -594,12 +602,16 @@ button {
   background: #86efac;
 }
 
-.task-badge.blocked {
-  background: #fda4af;
+.task-badge.high {
+  background: #fbbf24;
 }
 
-.task-badge.active {
+.task-badge.medium {
   background: #fde68a;
+}
+
+.task-badge.low {
+  background: #93c5fd;
 }
 
 .accent-card {
