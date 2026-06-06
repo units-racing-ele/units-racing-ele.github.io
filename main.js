@@ -413,14 +413,20 @@ function renderUpcoming() {
 }
 
 function renderStats() {
-  const todayKey = dateKey(new Date());
-  const queue = events.filter((event) => event.date >= todayKey && event.type !== "service").length;
-  const printing = events.filter((event) => event.type === "printing").length;
-  const done = 12;
+  const today = new Date();
+  const todayKey = dateKey(today);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const tomorrowKey = dateKey(tomorrow);
+  const monthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 
-  statQueue.textContent = String(queue);
-  statPrinting.textContent = String(printing);
-  statDone.textContent = String(done);
+  const todaysCount = events.filter((event) => event.date === todayKey).length;
+  const tomorrowsCount = events.filter((event) => event.date === tomorrowKey).length;
+  const monthlyCount = events.filter((event) => event.date.startsWith(monthPrefix)).length;
+
+  statQueue.textContent = String(todaysCount);
+  statPrinting.textContent = String(tomorrowsCount);
+  statDone.textContent = String(monthlyCount);
 }
 
 function openAuthDialog() {
