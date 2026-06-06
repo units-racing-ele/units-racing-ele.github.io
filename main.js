@@ -172,16 +172,20 @@ function getSeedEvents() {
   return normalizeEvents(defaultEvents).map((event) => ({ ...event }));
 }
 
+function supabaseHeaders(includeJson = false) {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    ...(includeJson ? { "Content-Type": "application/json" } : {}),
+  };
+}
+
 async function loadEvents() {
   if (!HAS_SUPABASE_CONFIG) {
     return getLocalEvents();
   }
 
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=*&order=date.asc,time.asc`, {
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
+    headers: supabaseHeaders(),
   });
 
   if (!response.ok) {
@@ -196,9 +200,7 @@ async function loadEvents() {
     const seedResponse = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
       method: "POST",
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        "Content-Type": "application/json",
+        ...supabaseHeaders(true),
         Prefer: "return=representation",
       },
       body: JSON.stringify(seedEvents),
@@ -229,9 +231,7 @@ async function persistEventRecord(event) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=id`, {
     method: "POST",
     headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
+      ...supabaseHeaders(true),
       Prefer: "resolution=merge-duplicates,return=representation",
     },
     body: JSON.stringify(event),
@@ -250,10 +250,7 @@ async function removeEventRecord(eventId) {
 
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(eventId)}`, {
     method: "DELETE",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
+    headers: supabaseHeaders(),
   });
 
   if (!response.ok) {
